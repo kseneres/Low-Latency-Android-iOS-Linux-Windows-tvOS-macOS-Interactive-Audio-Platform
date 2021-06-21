@@ -51,6 +51,8 @@ CrossExample::CrossExample (
 
     filter->resonance = 0.1f;
 
+    // create copy of array, since superpowered decoder seems to automatically free the buffer
+    // trying to delete this array after decodeToAudioInMemory will cause null pointer dereference
     auto *arr = new int8_t[fileAlength];
     std::copy(fileBytes, fileBytes + fileAlength, arr);
     void *result = Superpowered::Decoder::decodeToAudioInMemory(arr, fileAlength);
