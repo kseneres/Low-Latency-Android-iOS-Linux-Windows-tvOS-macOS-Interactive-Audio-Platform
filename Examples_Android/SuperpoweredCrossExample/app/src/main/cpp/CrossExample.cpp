@@ -6,6 +6,7 @@
 #include <android/log.h>
 #include <SLES/OpenSLES.h>
 #include <SLES/OpenSLES_AndroidConfiguration.h>
+#include <algorithm>
 
 #define log_print __android_log_print
 
@@ -26,7 +27,9 @@ CrossExample::CrossExample (
 		int fileAoffset,         // offset of file A in APK
 		int fileAlength,         // length of file A
 		int fileBoffset,         // offset of file B in APK
-		int fileBlength          // length of file B
+		int fileBlength,         // length of file B
+		int8_t* fileBytes
+
 ) : activeFx(0), numPlayersLoaded(0), crossFaderPosition(0.0f), volB(0.0f), volA(1.0f * headroom)
 {
     Superpowered::Initialize(
@@ -47,7 +50,16 @@ CrossExample::CrossExample (
     flanger = new Superpowered::Flanger(samplerate);
 
     filter->resonance = 0.1f;
-    playerA->open(path, fileAoffset, fileAlength);
+
+    auto *arr = new int8_t[fileAlength];
+    std::copy(fileBytes, fileBytes + fileAlength, arr);
+    void *result = Superpowered::Decoder::decodeToAudioInMemory(arr, fileAlength);
+    if (result) {
+        audioInMemory = static_cast<Superpowered::AudioInMemory *>(result);
+    }
+    playerA->openMemory(audioInMemory);
+
+//    playerA->open(path, fileAoffset, fileAlength);
     playerB->open(path, fileBoffset, fileBlength);
 
     // Initialize audio engine and pass callback function.
@@ -207,12 +219,18 @@ Java_com_superpowered_crossexample_MainActivity_CrossExample(
 		jint fileAoffset, // offset of file A in APK
 		jint fileAlength, // length of file A
 		jint fileBoffset, // offset of file B in APK
-		jint fileBlength  // length of file B
+		jint fileBlength,  // length of file B
+        jbyteArray fileBytes
 ) {
     const char *path = env->GetStringUTFChars(apkPath, JNI_FALSE);
+
+    int8_t* file = env->GetByteArrayElements(fileBytes, nullptr);
+
     example = new CrossExample((unsigned int)samplerate, (unsigned int)buffersize,
-			path, fileAoffset, fileAlength, fileBoffset, fileBlength);
+                               path, fileAoffset, fileAlength, fileBoffset, fileBlength, file);
+
     env->ReleaseStringUTFChars(apkPath, path);
+    env->ReleaseByteArrayElements(fileBytes, file, JNI_ABORT);
 }
 
 // onPlayPause - Toggle playback state of player.

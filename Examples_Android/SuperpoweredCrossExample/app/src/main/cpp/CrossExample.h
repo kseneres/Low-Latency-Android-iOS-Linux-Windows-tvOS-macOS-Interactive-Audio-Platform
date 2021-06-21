@@ -15,7 +15,7 @@ static const float headroom = powf(10.0f, -HEADROOM_DECIBEL * 0.05f);
 class CrossExample {
 public:
 
-	CrossExample(unsigned int samplerate, unsigned int buffersize, const char *path, int fileAoffset, int fileAlength, int fileBoffset, int fileBlength);
+	CrossExample(unsigned int samplerate, unsigned int buffersize, const char *path, int fileAoffset, int fileAlength, int fileBoffset, int fileBlength, int8_t* fileBytes);
 	~CrossExample();
 
 	bool process(short int *output, unsigned int numberOfSamples, unsigned int samplerate);
@@ -33,6 +33,8 @@ private:
     Superpowered::Flanger *flanger;
 	float crossFaderPosition, volA, volB;
 	unsigned int activeFx, numPlayersLoaded;
+
+	Superpowered::AudioInMemory *audioInMemory;
 };
 
 #endif

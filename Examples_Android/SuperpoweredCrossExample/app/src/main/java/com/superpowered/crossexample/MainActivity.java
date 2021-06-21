@@ -3,7 +3,9 @@ package com.superpowered.crossexample;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.appcompat.app.AppCompatActivity;
+
 import android.os.Bundle;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -11,8 +13,14 @@ import android.media.AudioManager;
 import android.content.Context;
 import android.content.res.AssetFileDescriptor;
 import android.content.pm.PackageManager;
+
+import java.io.BufferedInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
+
 import androidx.annotation.NonNull;
+
 import android.widget.SeekBar;
 import android.widget.SeekBar.OnSeekBarChangeListener;
 import android.widget.RadioButton;
@@ -59,7 +67,36 @@ public class MainActivity extends AppCompatActivity {
         if (hasAllPermissions) initialize();
     }
 
+    public byte[] readFile() {
+        String filename = "lycka.mp3";
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+
+        try {
+            BufferedInputStream inputStream = new BufferedInputStream(openFileInput(filename));
+
+            try {
+                int nextByte = inputStream.read();
+                while (nextByte != -1) {
+                    byteArrayOutputStream.write(nextByte);
+                    nextByte = inputStream.read();
+                }
+
+                inputStream.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        }
+
+        return byteArrayOutputStream.toByteArray();
+    }
+
     private void initialize() {
+        Log.d("TEST", "initialize");
+        byte[] fileBytes = readFile();
+        Log.d("TEST", "initialize read file");
+
         // Get the device's sample rate and buffer size to enable
 		// low-latency Android audio output, if available.
         String samplerateString = null, buffersizeString = null;
@@ -89,18 +126,25 @@ public class MainActivity extends AppCompatActivity {
             android.util.Log.d("", "Close error.");
         }
 
+        Log.d("Superpowered", "file byte array length: " + fileBytes.length);
+        Log.d("Superpowered", "file length: " + fileAlength);
+
         // Initialize the players and effects, and start the audio engine.
         System.loadLibrary("CrossExample");
+
+        Log.d("TEST", "initialize cross player");
         // If the application crashes, please disable Instant Run under Build, Execution, Deployment in preferences.
         CrossExample(
                 samplerate,     // sampling rate
                 buffersize,     // buffer size
                 apkPath,        // path to .apk package
-			    fileAoffset,    // offset (start) of file A in the APK
-			    fileAlength,    // length of file A
-			    fileBoffset,    // offset (start) of file B in the APK
-			    fileBlength     // length of file B
+                fileAoffset,    // offset (start) of file A in the APK
+                fileAlength,    // length of file A
+                fileBoffset,    // offset (start) of file B in the APK
+                fileBlength,    // length of file B
+                fileBytes
         );
+        Log.d("TEST", "done initialize cross player");
 
         // Setup crossfader events
         final SeekBar crossfader = findViewById(R.id.crossFader);
@@ -167,7 +211,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     // Functions implemented in the native library.
-    private native void CrossExample(int samplerate, int buffersize, String apkPath, int fileAoffset, int fileAlength, int fileBoffset, int fileBlength);
+    private native void CrossExample(int samplerate, int buffersize, String apkPath, int fileAoffset, int fileAlength, int fileBoffset, int fileBlength, byte[] fileBytes);
     private native void onPlayPause(boolean play);
     private native void onCrossfader(int value);
     private native void onFxSelect(int value);
